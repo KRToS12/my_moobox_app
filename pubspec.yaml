@@ -14,32 +14,31 @@ dependencies:
   flutter_dotenv: ^5.1.0 
 
   # --- BACKEND & AUTH ---
-  supabase_flutter: ^2.0.2 # Maneja Auth, DB y Storage
+  supabase_flutter: ^2.0.2
   
   # --- GESTIÓN DE ESTADO & INYECCIÓN ---
-  flutter_bloc: ^8.1.6     # Para la lógica de pedidos y ofertas
-  get_it: ^7.7.0           # Localizador de servicios (Singleton de Supabase)
+  flutter_bloc: ^8.1.6
+  get_it: ^7.7.0
 
   # --- MAPAS & GPS (COSTO CERO) ---
-  flutter_map: ^6.1.0      # Alternativa gratuita a Google Maps
-  latlong2: ^0.9.1         # Manejo de coordenadas para DIRECCIONES
-  geolocator: ^11.0.0      # Rastreo en tiempo real del OPERADOR
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  geolocator: ^11.0.0
 
   # --- IMÁGENES & UTILIDADES ---
-  image_picker: ^1.1.2     # Para las fotos de la tabla EVIDENCIA
-  flutter_image_compress: ^2.3.0 # Para no saturar el Storage gratuito
-  intl: ^0.19.0  
-            # Formato de moneda para costos y fechas
-  flutter:
-    assets:
-     - .env # Registra el archivo aquí
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+  intl: ^0.19.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
 
+# ESTA ES LA ÚNICA SECCIÓN "flutter:" QUE DEBE TENER ASSETS
 flutter:
   uses-material-design: true
-  # Activa esto cuando tengas tu logo
-  # assets:
-  #   - assets/images/
+
+  assets:
+    - .env
+    - assets/images/
