@@ -11,7 +11,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Controladores para capturar la información
   final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -19,6 +18,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   bool _isLoading = false;
   bool _obscurePassword = true;
+
+  // Lógica para registro con Google
+  void _handleGoogleRegister() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthRepository().signInWithGoogleMobile();
+      // El AuthWrapper se encargará de redirigir al Dashboard
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error con Google: $e"), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _handleRegister() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nombreController.text.isEmpty) {
@@ -31,7 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
     try {
       final authRepo = AuthRepository();
-      // Registramos al usuario en Supabase y en la tabla 'usuario'
       await authRepo.registrarCliente(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -39,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Regresa al Login tras el éxito
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Cuenta creada con éxito. ¡Inicia sesión!"),
@@ -59,7 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -74,8 +87,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 20),
-              // Título principal
+              const SizedBox(height: 10),
               Text(
                 "Crea tu cuenta",
                 style: GoogleFonts.quicksand(
@@ -84,32 +96,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   color: AppColors.primaryBlue,
                 ),
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 40),
 
-              // Campo: Nombre Completo
+              _buildInputField(controller: _nombreController, hint: "Nombre completo"),
+              const SizedBox(height: 15),
               _buildInputField(
-                controller: _nombreController,
-                hint: "Nombre completo",
+                controller: _emailController, 
+                hint: "Correo electrónico", 
+                keyboardType: TextInputType.emailAddress
               ),
               const SizedBox(height: 15),
-
-              // Campo: Correo electrónico
               _buildInputField(
-                controller: _emailController,
-                hint: "Correo electrónico",
-                keyboardType: TextInputType.emailAddress,
+                controller: _phoneController, 
+                hint: "Teléfono", 
+                keyboardType: TextInputType.phone
               ),
               const SizedBox(height: 15),
-
-              // Campo: Teléfono
-              _buildInputField(
-                controller: _phoneController,
-                hint: "Teléfono",
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 15),
-
-              // Campo: Contraseña (con ojo para ver/ocultar)
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -124,9 +126,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
-              // Botón Registrarse
               _isLoading
                   ? const CircularProgressIndicator()
                   : SizedBox(
@@ -137,19 +138,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
               
+              const SizedBox(height: 25),
+
+              // SECCIÓN SOCIAL
+              const Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text("O regístrate con", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 25),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _socialButton(
+                      text: "Google", 
+                      color: AppColors.primaryBlue, 
+                      textColor: Colors.white,
+                      icon: Icons.g_mobiledata,
+                      onTap: _handleGoogleRegister,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: _socialButton(
+                      text: "Apple", 
+                      color: Colors.white, 
+                      textColor: AppColors.primaryBlue,
+                      icon: Icons.apple,
+                      hasBorder: true,
+                      onTap: () {}, // Implementar Apple login si es necesario
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 30),
 
-              // Footer: Iniciar sesión
+              // Footer: Regresar al Login
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  // Navigator.pop devuelve al usuario a la pantalla anterior (LoginScreen)
+                  Navigator.pop(context); 
+                },
                 child: RichText(
                   text: TextSpan(
-                    style: GoogleFonts.quicksand(color: AppColors.primaryBlue, fontSize: 16),
+                    style: GoogleFonts.quicksand(
+                      color: AppColors.primaryBlue, 
+                      fontSize: 16
+                    ),
                     children: const [
                       TextSpan(text: "¿Ya tienes cuenta? "),
                       TextSpan(
                         text: "Inicia sesión",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline, 
+                        ),
                       ),
                     ],
                   ),
@@ -163,7 +213,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Widget auxiliar para mantener el diseño limpio de los inputs
+  // Widget auxiliar para botones sociales
+  Widget _socialButton({
+    required String text, 
+    required Color color, 
+    required Color textColor, 
+    required IconData icon, 
+    required VoidCallback onTap,
+    bool hasBorder = false
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+          border: hasBorder ? Border.all(color: AppColors.primaryBlue.withOpacity(0.2)) : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor),
+            const SizedBox(width: 8),
+            Text(text, style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required String hint,
