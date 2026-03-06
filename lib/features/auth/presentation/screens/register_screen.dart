@@ -13,9 +13,10 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _phoneController = TextEditingController(); 
   final _passwordController = TextEditingController();
-  
+
+ 
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -35,35 +36,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nombreController.text.isEmpty) {
+    // 1. Validación rigurosa de campos
+    final nombre = _nombreController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (nombre.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Por favor, completa los campos obligatorios")),
+        const SnackBar(content: Text("Todos los campos son obligatorios")),
       );
       return;
     }
 
     setState(() => _isLoading = true);
+    
     try {
       final authRepo = AuthRepository();
+      
+      // 2. Llamada al repositorio
       await authRepo.registrarCliente(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-        nombre: _nombreController.text.trim(),
+        email: email,
+        password: password,
+        nombre: nombre,
+        telefono: phone, // Asegúrate que tu AuthRepository use este nombre internamente
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context); // Regresa al Login
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Cuenta creada con éxito. ¡Inicia sesión!"),
+            content: Text("¡Cuenta creada! Inicia sesión para continuar."),
             backgroundColor: AppColors.statusSuccess,
           ),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}"), backgroundColor: AppColors.error),
-      );
+      // 3. Manejo de errores amigable para el usuario
+      String errorMsg = "Ocurrió un error inesperado";
+      final eStr = e.toString();
+
+      if (eStr.contains("500") || eStr.contains("Database error")) {
+        errorMsg = "Error en el servidor. Verifica que el teléfono sea válido.";
+      } else if (eStr.contains("already registered")) {
+        errorMsg = "Este correo ya está registrado.";
+      } else if (eStr.contains("network")) {
+        errorMsg = "Error de conexión. Revisa tu internet.";
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: AppColors.error),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
