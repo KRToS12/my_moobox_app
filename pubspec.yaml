@@ -16,6 +16,7 @@ dependencies:
   # --- BACKEND & AUTH ---
   supabase_flutter: ^2.0.2
   google_sign_in: ^6.2.1  # <--- ASEGÚRATE DE QUE ESTÉ AQUÍ
+  google_generative_ai: ^0.4.0  # El paquete oficial de Google para Gemini
   
   # --- GESTIÓN DE ESTADO & INYECCIÓN ---
   flutter_bloc: ^8.1.6

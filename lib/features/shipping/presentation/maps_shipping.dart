@@ -4,20 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/theme/app_colors.dart';
 
-class SelectorUbicacionGratuito extends StatefulWidget {
-  const SelectorUbicacionGratuito({super.key});
+class MapsShippingScreen extends StatefulWidget {
+  const MapsShippingScreen({super.key});
 
   @override
-  State<SelectorUbicacionGratuito> createState() => _SelectorUbicacionGratuitoState();
+  State<MapsShippingScreen> createState() => _MapsShippingScreenState();
 }
 
-class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
+class _MapsShippingScreenState extends State<MapsShippingScreen> {
   LatLng _puntoActual = const LatLng(-17.3935, -66.1570); // Cochabamba
+  String _direccionDetectada = "Ubicación en el mapa";
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   
@@ -32,8 +32,6 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
       return;
     }
 
-    // Definimos un área de búsqueda (viewbox) de ~5km alrededor del punto actual
-    // para priorizar resultados locales
     double bias = 0.05; 
     String viewbox = "${_puntoActual.longitude - bias},${_puntoActual.latitude + bias},${_puntoActual.longitude + bias},${_puntoActual.latitude - bias}";
 
@@ -50,22 +48,28 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
     }
   }
 
-  // --- LÓGICA: Snap to Road (Ajuste automático) ---
+  // --- LÓGICA: Snap to Road + Reverse Geocoding (Para obtener el nombre de la calle) ---
   Future<void> _ajustarAViaCercana(LatLng punto) async {
     setState(() => _isProcessing = true);
     try {
-      final url = Uri.parse(
+      // 1. Ajuste a la calle (OSRM)
+      final urlOsrm = Uri.parse(
           'https://router.project-osrm.org/nearest/v1/driving/${punto.longitude},${punto.latitude}');
 
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final resOsrm = await http.get(urlOsrm);
+      if (resOsrm.statusCode == 200) {
+        final data = json.decode(resOsrm.body);
         if (data['waypoints'] != null && data['waypoints'].isNotEmpty) {
           final List location = data['waypoints'][0]['location'];
-          LatLng puntoEnCalle = LatLng(location[1], location[0]);
+          final String nombreCalle = data['waypoints'][0]['name'] ?? "Calle no identificada";
           
+          LatLng puntoEnCalle = LatLng(location[1], location[0]);
           _mapController.move(puntoEnCalle, _mapController.camera.zoom);
-          setState(() => _puntoActual = puntoEnCalle);
+          
+          setState(() {
+            _puntoActual = puntoEnCalle;
+            _direccionDetectada = nombreCalle;
+          });
         }
       }
     } catch (e) {
@@ -88,6 +92,10 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
   }
 
   Future<void> _irAUbicacionActual() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
     Position position = await Geolocator.getCurrentPosition();
     LatLng miPos = LatLng(position.latitude, position.longitude);
     _mapController.move(miPos, 16.5);
@@ -100,7 +108,6 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // 1. EL MAPA
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -117,13 +124,9 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
             ],
           ),
 
-          // 2. BUSCADOR SUPERIOR
           _buildFloatingSearchBar(),
-
-          // 3. PIN CENTRAL "FINE & THIN"
           _buildFineCentralPin(),
 
-          // 4. BOTÓN GPS
           Positioned(
             right: 20,
             bottom: 250,
@@ -135,14 +138,12 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
             ),
           ),
 
-          // 5. PANEL INFERIOR
           _buildBottomPanel(),
         ],
       ),
     );
   }
 
-  // --- WIDGET: Pin Central Fino y Delgado ---
   Widget _buildFineCentralPin() {
     return Center(
       child: Container(
@@ -195,10 +196,7 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
     return Container(
       margin: const EdgeInsets.only(top: 5),
       constraints: const BoxConstraints(maxHeight: 200),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
       child: ListView.builder(
         shrinkWrap: true,
         padding: EdgeInsets.zero,
@@ -217,6 +215,7 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
                 _puntoActual = destino;
                 _searchResults = [];
                 _searchController.text = place['display_name'];
+                _direccionDetectada = place['display_name'];
               });
               _ajustarAViaCercana(destino);
             },
@@ -240,14 +239,21 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              _isProcessing ? "LOCALIZANDO VÍA..." : "PUNTO DE CARGA DETECTADO",
+              _isProcessing ? "LOCALIZANDO VÍA..." : "PUNTO DETECTADO",
               style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w900, color: _isProcessing ? AppColors.accentCoral : AppColors.textSecondary, letterSpacing: 1.5),
             ),
             const SizedBox(height: 15),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isProcessing ? null : () => _mostrarModalNombre(context),
+                onPressed: _isProcessing ? null : () {
+                  // NO GUARDAMOS EN SUPABASE AQUÍ. Retornamos los datos a la pantalla anterior
+                  Navigator.pop(context, {
+                    'lat': _puntoActual.latitude,
+                    'lng': _puntoActual.longitude,
+                    'address': _direccionDetectada,
+                  });
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.textBlack,
                   padding: const EdgeInsets.symmetric(vertical: 18),
@@ -262,81 +268,16 @@ class _SelectorUbicacionGratuitoState extends State<SelectorUbicacionGratuito> {
       ),
     );
   }
-
-  void _mostrarModalNombre(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 30, top: 30, left: 25, right: 25),
-        decoration: const BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("NOMBRE DEL LUGAR", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textBlack, letterSpacing: 1.2)),
-            const SizedBox(height: 15),
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              style: GoogleFonts.inter(color: AppColors.textBlack, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: "Ej: Almacén Principal",
-                filled: true,
-                fillColor: AppColors.dividerGray.withOpacity(0.1),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 25),
-            _buildFinalSaveButton(nameController),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFinalSaveButton(TextEditingController controller) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryBlue, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-        onPressed: () async {
-          if (controller.text.isEmpty) return;
-          await Supabase.instance.client.from('puntos_frecuentes').insert({
-            'id_usuario': Supabase.instance.client.auth.currentUser!.id,
-            'nombre_lugar': controller.text,
-            'latitud': _puntoActual.latitude,
-            'longitud': _puntoActual.longitude,
-            'direccion_texto': _searchController.text.isNotEmpty ? _searchController.text : "Ubicación validada",
-          });
-          if (mounted) {
-            Navigator.pop(context);
-            Navigator.pop(context);
-          }
-        },
-        child: const Text("GUARDAR PUNTO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-      ),
-    );
-  }
 }
 
-// --- PAINTER: Pin Central Fino y Minimalista ---
 class FinePinPainter extends CustomPainter {
   final Color color;
   FinePinPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
+    final paint = Paint()..color = color..strokeWidth = 1.5..style = PaintingStyle.stroke;
     final center = Offset(size.width / 2, size.height / 2);
-    
-    // Dibujamos una cruz fina y un círculo pequeño central
     canvas.drawCircle(center, 4, paint);
     canvas.drawLine(Offset(center.dx, center.dy - 15), Offset(center.dx, center.dy + 15), paint);
     canvas.drawLine(Offset(center.dx - 15, center.dy), Offset(center.dx + 15, center.dy), paint);
