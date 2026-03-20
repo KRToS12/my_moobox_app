@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,162 +13,316 @@ class RegistrosTab extends StatefulWidget {
 
 class _RegistrosTabState extends State<RegistrosTab> {
   final _supabase = Supabase.instance.client;
+  
+  List<Map<String, dynamic>> _pedidos = [];
+  List<Map<String, dynamic>> _ofertas = [];
+  bool _isLoading = true;
 
-  Future<List<Map<String, dynamic>>> _obtenerActividadUnificada() async {
+  StreamSubscription? _subPedidos;
+  StreamSubscription? _subOfertas;
+
+  @override
+  void initState() {
+    super.initState();
+    _iniciarSuscripcionesRealtime();
+  }
+
+  void _iniciarSuscripcionesRealtime() {
     final user = _supabase.auth.currentUser;
-    if (user == null) return [];
+    if (user == null) return;
 
-    try {
-      final respuestas = await Future.wait([
-        _supabase.from('pedidos').select().eq('id_usuario', user.id),
-        _supabase.from('ofertas_pedido').select().eq('id_usuario', user.id),
-      ]);
+    _subPedidos = _supabase
+        .from('pedidos')
+        .stream(primaryKey: ['id_pedido'])
+        .eq('id_usuario', user.id)
+        .listen((data) {
+          if (mounted) {
+            setState(() {
+              _pedidos = data.map((e) => {...e, 'tipo_registro': 'pedido'}).toList();
+              _isLoading = false;
+            });
+          }
+        });
 
-      final List<Map<String, dynamic>> pedidos = List<Map<String, dynamic>>.from(respuestas[0]);
-      final List<Map<String, dynamic>> ofertas = List<Map<String, dynamic>>.from(respuestas[1]);
+    _subOfertas = _supabase
+        .from('ofertas_pedido')
+        .stream(primaryKey: ['id_oferta'])
+        .eq('id_usuario', user.id)
+        .listen((data) {
+          if (mounted) {
+            setState(() {
+              _ofertas = data.map((e) => {...e, 'tipo_registro': 'oferta'}).toList();
+              _isLoading = false;
+            });
+          }
+        });
+  }
 
-      final listaUnificada = [
-        ...pedidos.map((e) => {...e, 'tipo_registro': 'pedido'}),
-        ...ofertas.map((e) => {...e, 'tipo_registro': 'oferta'}),
-      ];
+  List<Map<String, dynamic>> get _listaCombinada {
+    final lista = [..._pedidos, ..._ofertas];
+    lista.sort((a, b) {
+      final fechaA = DateTime.tryParse(a['fecha_solicitud'] ?? a['created_at'] ?? "") ?? DateTime(2000);
+      final fechaB = DateTime.tryParse(b['fecha_solicitud'] ?? b['created_at'] ?? "") ?? DateTime(2000);
+      return fechaB.compareTo(fechaA);
+    });
+    return lista;
+  }
 
-      listaUnificada.sort((a, b) {
-        final fechaA = DateTime.tryParse(a['created_at'] ?? "") ?? DateTime(2000);
-        final fechaB = DateTime.tryParse(b['created_at'] ?? "") ?? DateTime(2000);
-        return fechaB.compareTo(fechaA);
-      });
-
-      return listaUnificada;
-    } catch (e) {
-      debugPrint("Error Moobox: $e");
-      return [];
-    }
+  @override
+  void dispose() {
+    _subPedidos?.cancel();
+    _subOfertas?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final registros = _listaCombinada;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _obtenerActividadUnificada(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue));
-          }
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue))
+        : registros.isEmpty 
+          ? _buildEmptyState()
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+              itemCount: registros.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12), 
+              itemBuilder: (context, i) => _buildStealthCard(registros[i]),
+            ),
+    );
+  }
 
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-            return _buildEmptyState();
-          }
+  // --- UI: TARJETA PRINCIPAL (SLIM DESIGN) ---
+  Widget _buildStealthCard(Map<String, dynamic> item) {
+    final bool esPedido = item['tipo_registro'] == 'pedido';
+    
+    // Mapeo dinámico
+    final String monto = esPedido 
+        ? (item['costo_cotizado']?.toString() ?? "0") 
+        : (item['monto_ofertado']?.toString() ?? "0");
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-            itemCount: snapshot.data!.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10), 
-            itemBuilder: (context, i) => _buildStealthCard(snapshot.data![i]),
-          );
-        },
+    final String estado = esPedido 
+        ? (item['estado_pedido'] ?? 'pendiente') 
+        : (item['estado_oferta'] ?? 'abierta');
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _mostrarDetalles(item), 
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEBEBEB), 
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.dividerGray.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        esPedido ? Icons.assignment_rounded : Icons.local_offer_rounded,
+                        size: 12,
+                        color: esPedido ? AppColors.primaryBlue : AppColors.warningYellow,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        esPedido ? "SOLICITUD" : "OFERTA",
+                        style: GoogleFonts.inter(
+                          fontSize: 9, 
+                          fontWeight: FontWeight.w900, 
+                          letterSpacing: 1.2,
+                          color: AppColors.textBlack.withOpacity(0.7)
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _buildBadgeEstado(estado),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      monto,
+                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textBlack),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      "BOB",
+                      style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w900, color: AppColors.primaryBlue),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textBlack.withOpacity(0.2)),
+          ],
+        ),
       ),
     );
   }
 
-  // --- UI: DISEÑO STEALTH (GRIS, SIN UBICACIONES NI IDS) ---
-  Widget _buildStealthCard(Map<String, dynamic> item) {
+  // --- UI: MODAL CON TODOS LOS DATOS TÉCNICOS ---
+  void _mostrarDetalles(Map<String, dynamic> item) {
     final bool esPedido = item['tipo_registro'] == 'pedido';
-    
-    final String monto = esPedido 
-        ? (item['monto']?.toString() ?? "0") 
-        : (item['monto_ofertado']?.toString() ?? "0");
 
-    final String descripcion = esPedido 
-        ? (item['descripcion'] ?? "Flete") 
-        : (item['tipo_carga'] ?? "Oferta");
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 30),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildModalHeader(esPedido, item),
+              const Divider(height: 40, thickness: 0.5),
+              
+              Text("ESPECIFICACIONES DE CARGA", 
+                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textSecondary, letterSpacing: 1.0)),
+              const SizedBox(height: 20),
+              
+              _infoDetailRow("TIPO DE CARGA", item['tipo_carga'] ?? "Carga General"),
+              if (!esPedido) ...[
+                _infoDetailRow("ORIGEN", item['direccion_origen'] ?? "Punto de carga detectado"),
+                _infoDetailRow("DESTINO", item['direccion_destino'] ?? "Punto de entrega detectado"),
+              ],
+              
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _miniDetailCard(Icons.groups_rounded, "ESTIBADORES", "${item['estibadores'] ?? 0}"),
+                  _miniDetailCard(Icons.layers_rounded, "PISOS ORIGEN", "${item['piso_origen'] ?? 0}"),
+                  _miniDetailCard(Icons.layers_rounded, "PISOS DESTINO", "${item['piso_destino'] ?? 0}"),
+                ],
+              ),
 
-    final String estado = esPedido 
-        ? (item['estado'] ?? 'pendiente') 
-        : (item['estado_oferta'] ?? 'abierta');
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: BoxDecoration(
-        // Tono más gris para que no se funda con el fondo blanco/claro
-        color: const Color.fromARGB(255, 214, 214, 214), 
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.dividerGray.withOpacity(0.4), width: 1),
-      ),
-      child: Row(
-        children: [
-          // LADO IZQUIERDO: TIPO Y DESCRIPCIÓN
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  esPedido ? "PEDIDO" : "OFERTA",
-                  style: GoogleFonts.inter(
-                    fontSize: 10, 
-                    fontWeight: FontWeight.w900, 
-                    color: esPedido ? AppColors.primaryBlue : AppColors.warningYellow,
-                    letterSpacing: 1.0
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  descripcion.toUpperCase(),
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textBlack),
+              if (!esPedido && item['comentario_oferta'] != null && item['comentario_oferta'].toString().isNotEmpty) ...[
+                const SizedBox(height: 25),
+                Text("COMENTARIO DEL TRANSPORTISTA", 
+                    style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                  child: Text(item['comentario_oferta'], style: GoogleFonts.inter(fontSize: 13, height: 1.4)),
                 ),
               ],
-            ),
-          ),
-
-          // CENTRO: ESTADO SIMPLIFICADO
-          _buildStatusDot(estado),
-
-          const SizedBox(width: 20),
-
-          // LADO DERECHO: PRECIO
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                monto,
-                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textBlack),
-              ),
-              Text(
-                "BOB",
-                style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.primaryBlue),
-              ),
+              
+              const SizedBox(height: 35),
+              _buildCloseButton(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // --- COMPONENTES AUXILIARES ---
+
+  Widget _buildModalHeader(bool esPedido, Map<String, dynamic> item) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(esPedido ? "DETALLE DEL PEDIDO" : "DETALLE DE LA OFERTA", 
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.primaryBlue, letterSpacing: 1.5)),
+            const SizedBox(height: 4),
+            Text("REF ID: ${esPedido ? item['id_pedido'].toString().substring(0,8) : item['id_oferta'].toString().substring(0,8)}".toUpperCase(),
+                style: GoogleFonts.inter(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: AppColors.textBlack, borderRadius: BorderRadius.circular(8)),
+          child: Text(
+            "${esPedido ? item['costo_cotizado'] : item['monto_ofertado']} BOB",
+            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildBadgeEstado(String status) {
+    Color c = AppColors.primaryBlue;
+    if(status.contains('aceptada') || status.contains('completado')) c = Colors.green;
+    if(status.contains('rechazada')) c = Colors.redAccent;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
+      child: Text(status.toUpperCase(), style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w800, color: c)),
+    );
+  }
+
+  Widget _infoDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
+          Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textBlack)),
         ],
       ),
     );
   }
 
-  Widget _buildStatusDot(String status) {
-    Color color = Colors.blueGrey;
-    if (status.contains('abierta') || status.contains('pendiente')) color = AppColors.primaryBlue;
-    if (status.contains('aceptada') || status.contains('completado')) color = Colors.green;
-    if (status.contains('rechazada')) color = Colors.redAccent;
-
+  Widget _miniDetailCard(IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(5),
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(border: Border.all(color: AppColors.dividerGray.withOpacity(0.2)), borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        children: [
+          Icon(icon, size: 14, color: AppColors.primaryBlue),
+          const SizedBox(height: 6),
+          Text(label, style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
+          Text(value, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.textBlack)),
+        ],
       ),
-      child: Text(
-        status.toUpperCase(),
-        style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w800, color: color),
+    );
+  }
+
+  Widget _buildCloseButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: AppColors.textBlack, padding: const EdgeInsets.all(18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        onPressed: () => Navigator.pop(context),
+        child: Text("CERRAR DETALLES", style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Text(
-        "HISTORIAL VACÍO",
-        style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w900, color: AppColors.dividerGray, letterSpacing: 2.0),
-      ),
+      child: Text("SIN MOVIMIENTOS RECIENTES", 
+          style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w900, color: AppColors.dividerGray, letterSpacing: 2.0)),
     );
   }
 }

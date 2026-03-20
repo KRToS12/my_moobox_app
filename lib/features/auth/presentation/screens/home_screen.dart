@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,10 +19,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
-  
-  // Variables para el estado del usuario
   String? _fotoUrl;
   final _supabase = Supabase.instance.client;
+
+  // --- 1. SUBSCRIPCIÓN ROBUSTA ---
+  StreamSubscription? _avatarSubscription;
 
   @override
   void initState() {
@@ -31,82 +33,82 @@ class _HomeScreenState extends State<HomeScreen> {
       const RegistrosTab(),     
       const ChatTab(),           
     ];
-    _fetchAvatarActual(); // Carga inicial
+    _escucharCambiosPerfil(); 
   }
 
-  // --- LÓGICA DE SINCRONIZACIÓN: Obtener foto de la tabla 'usuario' ---
-  Future<void> _fetchAvatarActual() async {
+  void _escucharCambiosPerfil() {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
-    try {
-      final data = await _supabase
-          .from('usuario')
-          .select('foto_url')
-          .eq('id_usuario', user.id)
-          .single();
-
-      if (mounted) {
-        setState(() {
-          _fotoUrl = data['foto_url'];
+    // Escucha la tabla 'usuario' filtrando por el ID actual
+    // Importante: primaryKey debe coincidir con el nombre exacto en tu DB
+    _avatarSubscription = _supabase
+        .from('usuario')
+        .stream(primaryKey: ['id_usuario'])
+        .eq('id_usuario', user.id)
+        .listen((data) {
+          if (data.isNotEmpty && mounted) {
+            setState(() {
+              // Si la URL cambia o es nula, el widget se reconstruirá solo
+              _fotoUrl = data.first['foto_url'];
+              debugPrint("Moobox Sync: Foto actualizada en tiempo real");
+            });
+          }
+        }, onError: (error) {
+          debugPrint("Error Realtime Moobox: $error");
         });
-      }
-    } catch (e) {
-      debugPrint("Error al sincronizar avatar en Home: $e");
-    }
+  }
+
+  @override
+  void dispose() {
+    _avatarSubscription?.cancel(); 
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background, 
-      
       body: NestedScrollView(
-        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-          return <Widget>[
-            SliverAppBar(
-              backgroundColor: AppColors.background,
-              elevation: 0,
-              floating: true, 
-              snap: true,    
-              centerTitle: false,
-              title: Text(
-                "MOOBOX",
-                style: GoogleFonts.inter(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textBlack,
-                  letterSpacing: 1.5,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            backgroundColor: AppColors.background,
+            elevation: 0,
+            floating: true, 
+            snap: true,    
+            centerTitle: false,
+            title: Text(
+              "MOOBOX",
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textBlack,
+                letterSpacing: 1.5,
+              ),
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 15),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(29),
+                  onTap: () {
+                    // No necesitas refrescar manualmente al volver porque el Stream está vivo
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => PerfilScreen(rol: widget.rol)),
+                    );
+                  },
+                  child: _buildDynamicAvatar(),
                 ),
               ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 15),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(29),
-                    onTap: () async {
-                      // Al volver de PerfilScreen, refrescamos el avatar por si hubo cambios
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PerfilScreen(rol: widget.rol),
-                        ),
-                      );
-                      _fetchAvatarActual(); // Refresco tras volver
-                    },
-                    child: _buildDynamicAvatar(),
-                  ),
-                ),
-              ],
-            ),
-          ];
-        },
+            ],
+          ),
+        ],
         body: IndexedStack(
           index: _selectedIndex,
           children: _pages,
         ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -125,7 +127,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- WIDGET AVATAR: Prioriza foto de DB sobre icono predeterminado ---
   Widget _buildDynamicAvatar() {
     return Container(
       decoration: BoxDecoration(
@@ -135,16 +136,13 @@ class _HomeScreenState extends State<HomeScreen> {
       child: CircleAvatar(
         radius: 20,
         backgroundColor: AppColors.dividerGray.withOpacity(0.3),
-        // Sincronización con la URL de la base de datos
+        // Agregamos una Key única para forzar el refresco de la imagen si la URL cambia
+        key: ValueKey(_fotoUrl), 
         backgroundImage: (_fotoUrl != null && _fotoUrl!.isNotEmpty) 
             ? NetworkImage(_fotoUrl!) 
             : null,
         child: (_fotoUrl == null || _fotoUrl!.isEmpty)
-            ? const Icon(
-                Icons.person_rounded, 
-                size: 24, 
-                color: AppColors.textBlack,
-              )
+            ? const Icon(Icons.person_rounded, size: 24, color: AppColors.textBlack)
             : null,
       ),
     );

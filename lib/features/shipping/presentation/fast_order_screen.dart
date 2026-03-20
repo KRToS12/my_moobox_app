@@ -6,7 +6,15 @@ import '../../../../core/theme/app_colors.dart';
 import 'maps_shipping.dart';
 
 class FastOrderScreen extends StatefulWidget {
-  const FastOrderScreen({super.key});
+  // Aseguramos que recibimos los datos del vehículo correctamente
+  final double? capacidadSugerida;
+  final String? idVehiculoPreseleccionado;
+
+  const FastOrderScreen({
+    super.key, 
+    this.capacidadSugerida, 
+    this.idVehiculoPreseleccionado
+  });
 
   @override
   State<FastOrderScreen> createState() => _FastOrderScreenState();
@@ -17,7 +25,9 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   String _origen = "Seleccionar origen";
   String _destino = "Seleccionar destino";
   String _tipoCarga = "General";
-  double _pesoTN = 1.0;
+  
+  // CORRECCIÓN: Usamos 'late' para inicializarlo con seguridad en el initState
+  late double _pesoTN; 
   
   LatLng? _posOrigen;
   LatLng? _posDestino;
@@ -32,6 +42,14 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   double _distanciaKm = 0.0;
   double _precioEstimado = 0.0;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // SOLUCIÓN AL ERROR DEL SLIDER:
+    // .clamp(1.0, 30.0) asegura que si llega un 0 o un valor nulo, el valor sea forzado a estar entre 1 y 30.
+    _pesoTN = (widget.capacidadSugerida ?? 1.0).clamp(1.0, 30.0);
+  }
 
   @override
   void dispose() {
@@ -97,7 +115,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: Colors.white, // Cambiado a blanco para contraste
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: AppColors.dividerGray.withOpacity(0.5)),
           ),
@@ -106,7 +124,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
             maxLines: 4,
             style: GoogleFonts.inter(fontSize: 13, color: AppColors.textBlack),
             decoration: InputDecoration(
-              hintText: "Ej: Llevo 50 cajas de cerámica frágil, dimensiones 40x40. Se requiere cuidado extremo...",
+              hintText: "Ej: Llevo 50 cajas de cerámica frágil, dimensiones 40x40...",
               hintStyle: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary.withOpacity(0.6)),
               contentPadding: const EdgeInsets.all(15),
               border: InputBorder.none,
@@ -114,7 +132,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        _buildWarningBox("RECOMENDACIÓN: Indica si la carga es frágil, voluminosa o requiere equipo especial para evitar contratiempos."),
+        _buildWarningBox("RECOMENDACIÓN: Indica si la carga es frágil o voluminosa."),
       ],
     );
   }
@@ -132,19 +150,16 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception("Sesión no válida.");
 
-      // Inserción en tabla 'ofertas_pedido' integrando el comentario
+      // Inserción en la tabla ofertas_pedido incluyendo el id_vehiculo opcional
       await Supabase.instance.client.from('ofertas_pedido').insert({
         'id_usuario': user.id,
-        'id_pedido': null, 
         'monto_ofertado': _precioEstimado,
-        'precio': _precioEstimado,
-        'comentario_oferta': _commentController.text, // GUARDAMOS EL COMENTARIO AQUÍ
+        'comentario_oferta': _commentController.text,
         'estado_oferta': 'abierta',
-        
+        'id_vehiculo': widget.idVehiculoPreseleccionado, // Aquí se guarda el ID si existe
         'estibadores': _ayudantes,
         'piso_origen': _pisosOrigen,
         'piso_destino': _pisosDestino,
-        
         'lat_origen': _posOrigen!.latitude,
         'lng_origen': _posOrigen!.longitude,
         'lat_destino': _posDestino!.latitude,
@@ -153,22 +168,27 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
         'direccion_destino': _destino,
         'peso_carga': _pesoTN,
         'tipo_carga': _tipoCarga,
+        'precio': _precioEstimado, // Mapeamos también a la columna precio si es necesario
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("¡Flete publicado con éxito!"), backgroundColor: AppColors.primaryBlue));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("¡Flete publicado con éxito!"), 
+          backgroundColor: AppColors.primaryBlue
+        ));
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}"), backgroundColor: AppColors.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Error: ${e.toString()}"), 
+          backgroundColor: AppColors.error
+        ));
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
-
-  // =========================================================
-  // MOTOR DE COSTOS (SIN CAMBIOS)
-  // =========================================================
 
   void _calcularPrecio() {
     if (_posOrigen == null || _posDestino == null) return;
@@ -178,10 +198,8 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
     double dieselPrice = 9.8;
     double eficiencia = _pesoTN <= 5 ? 8.5 : (_pesoTN <= 15 ? 5.5 : 3.5);
     double costoCombustible = (_distanciaKm / eficiencia) * dieselPrice;
-
     double tarifaAyudante = _pesoTN <= 5 ? 50.0 : (_pesoTN <= 15 ? 80.0 : 120.0);
     double costoAyudantes = _ayudantes * tarifaAyudante;
-
     double costoVehiculo = 60.0 + (_pesoTN * 25.0);
     double costoPisos = (_pisosOrigen + _pisosDestino) * 30.0;
 
@@ -189,10 +207,6 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
       _precioEstimado = costoCombustible + costoVehiculo + costoAyudantes + costoPisos;
     });
   }
-
-  // =========================================================
-  // COMPONENTES DE INTERFAZ (RESTO DEL CÓDIGO)
-  // =========================================================
 
   Widget _buildStepTitle(String step, String title) {
     return Row(
@@ -207,7 +221,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   Widget _buildRouteCard() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.dividerGray.withOpacity(0.5))),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.dividerGray.withOpacity(0.5))),
       child: Column(
         children: [
           _locationSelector(Icons.radio_button_checked, AppColors.primaryBlue, "RECOJO", _origen, () => _abrirMapa("origen")),
@@ -272,7 +286,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   Widget _buildExtraServicesCard() {
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.dividerGray.withOpacity(0.5))),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.dividerGray.withOpacity(0.5))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
