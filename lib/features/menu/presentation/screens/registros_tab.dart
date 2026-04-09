@@ -83,14 +83,30 @@ class _RegistrosTabState extends State<RegistrosTab> {
       backgroundColor: AppColors.background,
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue))
-        : registros.isEmpty 
-          ? _buildEmptyState()
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-              itemCount: registros.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12), 
-              itemBuilder: (context, i) => _buildStealthCard(registros[i]),
-            ),
+        : RefreshIndicator(
+            color: AppColors.primaryBlue,
+            onRefresh: () async {
+              setState(() => _isLoading = true);
+              _subPedidos?.cancel();
+              _subOfertas?.cancel();
+              _iniciarSuscripcionesRealtime();
+            },
+            child: registros.isEmpty 
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.35),
+                    _buildEmptyState(),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                  itemCount: registros.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12), 
+                  itemBuilder: (context, i) => _buildStealthCard(registros[i]),
+                ),
+          ),
     );
   }
 
