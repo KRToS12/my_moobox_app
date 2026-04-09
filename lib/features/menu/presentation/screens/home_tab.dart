@@ -127,7 +127,7 @@ class _HomeTabState extends State<HomeTab> {
           _actionButton("Fast\nTransport", Icons.bolt_outlined, AppColors.accentCoral, 
               () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FastOrderScreen(capacidadSugerida: 0, idVehiculoPreseleccionado: null,)))),
           const SizedBox(width: 15),
-          _actionButton("Por\nSelección", Icons.grid_view_rounded, AppColors.primaryBlue, 
+          _actionButton("IA\nAsistencia", Icons.smart_toy_rounded, AppColors.primaryBlue, 
               () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SelectionOrderScreen()))),
         ],
       ),
