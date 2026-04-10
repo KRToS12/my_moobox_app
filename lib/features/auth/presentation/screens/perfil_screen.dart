@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../features/auth/presentation/widgets/auth_wrapper.dart';
 import '../settings/perfil_detalle.dart'; // Asegúrate de que este nombre coincida con tu archivo
 import '../settings/documentacion_detalle.dart';
 import '../settings/ajuste_detalle.dart';
@@ -227,7 +228,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
             onPressed: () async {
               await AuthRepository().logout();
               if (context.mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                // Al cerrar sesión, lo enviamos de vuelta al AuthWrapper que sirve como portero
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const AuthWrapper()),
+                  (route) => false,
+                );
               }
             },
             child: const Text("SÍ, SALIR", style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
