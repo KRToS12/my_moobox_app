@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../screens/login_screen.dart';
-import '../../presentation/screens/home_screen.dart'; 
+import '../../presentation/screens/home_screen.dart';
+import '../../../operator/presentation/screens/operator_home_screen.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -38,6 +39,9 @@ class AuthWrapper extends StatelessWidget {
 
             // Si se identifica el rol, enviamos al HomeScreen con su interfaz personalizada
             if (rolSnapshot.hasData && rolSnapshot.data != null) {
+              if (rolSnapshot.data == 'OPERADOR') {
+                return OperatorHomeScreen(rol: rolSnapshot.data!);
+              }
               return HomeScreen(rol: rolSnapshot.data!);
             }
 
