@@ -19,42 +19,125 @@ class FastOrderRouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.dividerGray.withOpacity(0.5)),
-      ),
-      child: Column(
-        children: [
-          _locationSelector(Icons.radio_button_checked, AppColors.primaryBlue, "RECOJO", origen, onTapOrigen),
-          Padding(
-            padding: const EdgeInsets.only(left: 11),
-            child: Align(alignment: Alignment.centerLeft, child: Container(width: 1, height: 25, color: AppColors.dividerGray)),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textBlack.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
-          _locationSelector(Icons.location_on, AppColors.accentCoral, "ENTREGA", destino, onTapDestino),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Stack(
+          children: [
+            // --- LÍNEA DE RUTA (DASHED) ---
+            Positioned(
+              left: 11,
+              top: 30,
+              bottom: 30,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const dashHeight = 4.0;
+                  const dashGap = 4.0;
+                  final count = (constraints.maxHeight / (dashHeight + dashGap)).floor();
+                  
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(count, (index) => Container(
+                      width: 2,
+                      height: dashHeight,
+                      decoration: BoxDecoration(
+                        color: AppColors.dividerGray,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    )),
+                  );
+                },
+              ),
+            ),
+            
+            Column(
+              children: [
+                _locationSelector(
+                  icon: Icons.panorama_fish_eye_rounded, 
+                  color: AppColors.primaryBlue, 
+                  label: "PUNTO DE RECOJO", 
+                  value: origen, 
+                  onTap: onTapOrigen,
+                  isPrimary: true,
+                ),
+                const SizedBox(height: 32),
+                _locationSelector(
+                  icon: Icons.location_on_rounded, 
+                  color: AppColors.accentCoral, 
+                  label: "PUNTO DE ENTREGA", 
+                  value: destino, 
+                  onTap: onTapDestino,
+                  isPrimary: false,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _locationSelector(IconData icon, Color color, String label, String value, VoidCallback onTap) {
+  Widget _locationSelector({
+    required IconData icon, 
+    required Color color, 
+    required String label, 
+    required String value, 
+    required VoidCallback onTap,
+    required bool isPrimary,
+  }) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 15),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
-                Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textBlack), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  label, 
+                  style: GoogleFonts.inter(
+                    fontSize: 10, 
+                    fontWeight: FontWeight.w900, 
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.5,
+                  )
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value, 
+                  style: GoogleFonts.inter(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w700, 
+                    color: AppColors.textBlack,
+                  ), 
+                  maxLines: 1, 
+                  overflow: TextOverflow.ellipsis
+                ),
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.dividerGray),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.dividerGray),
         ],
       ),
     );

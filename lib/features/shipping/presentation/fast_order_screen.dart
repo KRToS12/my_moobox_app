@@ -67,84 +67,100 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
       appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const FastOrderStepTitle(step: "1", title: "DEFINIR RUTA"),
-            const SizedBox(height: 15),
-            FastOrderRouteCard(
-              origen: _origen,
-              destino: _destino,
-              onTapOrigen: () => _abrirMapa("origen"),
-              onTapDestino: () => _abrirMapa("destino"),
-            ),
-            
-            const SizedBox(height: 30),
-            
-            const FastOrderStepTitle(step: "2", title: "DETALLES DE CARGA"),
-            const SizedBox(height: 15),
-            FastOrderCargoCard(
-              pesoTN: _pesoTN,
-              tipoCarga: _tipoCarga,
-              onPesoChanged: (val) {
-                setState(() => _pesoTN = val);
-                _calcularPrecio();
-              },
-            ),
-
-            const SizedBox(height: 30),
-
-            const FastOrderStepTitle(step: "3", title: "SERVICIOS ADICIONALES"),
-            const SizedBox(height: 15),
-            FastOrderServicesCard(
-              ayudantes: _ayudantes,
-              pisosOrigen: _pisosOrigen,
-              pisosDestino: _pisosDestino,
-              pesoTN: _pesoTN,
-              onAyudantesChanged: (val) {
-                setState(() => _ayudantes = val < 0 ? 0 : val);
-                _calcularPrecio();
-              },
-              onPisosOrigenChanged: (val) {
-                setState(() => _pisosOrigen = val < 0 ? 0 : val);
-                _calcularPrecio();
-              },
-              onPisosDestinoChanged: (val) {
-                setState(() => _pisosDestino = val < 0 ? 0 : val);
-                _calcularPrecio();
-              },
-            ),
-
-            const SizedBox(height: 30),
-
-            const FastOrderStepTitle(step: "4", title: "ESPECIFICACIONES DE CARGA"),
-            const SizedBox(height: 15),
-            FastOrderCommentField(commentController: _commentController),
-
-            const SizedBox(height: 40),
-            if (_distanciaKm > 0) ...[
-              const FastOrderStepTitle(step: "5", title: "ANÁLISIS DE COSTOS MOOBOX"),
-              const SizedBox(height: 15),
-              FastOrderPriceSummary(
-                distanciaKm: _distanciaKm,
-                precioEstimado: _precioEstimado,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.primaryBlue.withOpacity(0.05),
+              AppColors.background,
+            ],
+          ),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: 25, 
+            right: 25, 
+            top: MediaQuery.of(context).padding.top + 70, 
+            bottom: 40
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader("1", "DEFINIR RUTA ENVÍO"),
+              FastOrderRouteCard(
+                origen: _origen,
+                destino: _destino,
+                onTapOrigen: () => _abrirMapa("origen"),
+                onTapDestino: () => _abrirMapa("destino"),
+              ),
+              
+              const SizedBox(height: 35),
+              _buildSectionHeader("2", "DETALLES TÉCNICOS DE CARGA"),
+              FastOrderCargoCard(
                 pesoTN: _pesoTN,
+                tipoCarga: _tipoCarga,
+                onPesoChanged: (val) {
+                  setState(() => _pesoTN = val);
+                  _calcularPrecio();
+                },
+              ),
+  
+              const SizedBox(height: 35),
+              _buildSectionHeader("3", "LOGÍSTICA Y SERVICIOS"),
+              FastOrderServicesCard(
+                ayudantes: _ayudantes,
+                pisosOrigen: _pisosOrigen,
+                pisosDestino: _pisosDestino,
+                pesoTN: _pesoTN,
+                onAyudantesChanged: (val) {
+                  setState(() => _ayudantes = val < 0 ? 0 : val);
+                  _calcularPrecio();
+                },
+                onPisosOrigenChanged: (val) {
+                  setState(() => _pisosOrigen = val < 0 ? 0 : val);
+                  _calcularPrecio();
+                },
+                onPisosDestinoChanged: (val) {
+                  setState(() => _pisosDestino = val < 0 ? 0 : val);
+                  _calcularPrecio();
+                },
+              ),
+  
+              const SizedBox(height: 35),
+              _buildSectionHeader("4", "REQUERIMIENTOS ESPECIALES"),
+              FastOrderCommentField(commentController: _commentController),
+  
+              if (_distanciaKm > 0) ...[
+                const SizedBox(height: 40),
+                _buildSectionHeader("5", "ANÁLISIS DE COSTOS MOOBOX"),
+                FastOrderPriceSummary(
+                  distanciaKm: _distanciaKm,
+                  precioEstimado: _precioEstimado,
+                  pesoTN: _pesoTN,
+                ),
+              ],
+  
+              const SizedBox(height: 50),
+              FastOrderConfirmButton(
+                isSubmitting: _isSubmitting,
+                onPressed: _crearPedidoFast,
               ),
             ],
-
-            const SizedBox(height: 40),
-            FastOrderConfirmButton(
-              isSubmitting: _isSubmitting,
-              onPressed: _crearPedidoFast,
-            ),
-            const SizedBox(height: 30),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String step, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18, left: 4),
+      child: FastOrderStepTitle(step: step, title: title),
     );
   }
 
@@ -238,8 +254,26 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
     return AppBar(
       backgroundColor: Colors.transparent, 
       elevation: 0, 
-      leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.textBlack), onPressed: () => Navigator.pop(context)), 
-      title: Text("FAST TRANSPORT", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5))
+      centerTitle: true,
+      leading: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: CircleAvatar(
+          backgroundColor: Colors.white.withOpacity(0.8),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 16, color: AppColors.textBlack), 
+            onPressed: () => Navigator.pop(context)
+          ),
+        ),
+      ), 
+      title: Text(
+        "PREPARAR ENVÍO", 
+        style: GoogleFonts.inter(
+          fontSize: 14, 
+          fontWeight: FontWeight.w900, 
+          letterSpacing: 2.0,
+          color: AppColors.primaryBlue,
+        )
+      )
     );
   }
 }

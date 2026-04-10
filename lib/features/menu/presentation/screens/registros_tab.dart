@@ -29,19 +29,29 @@ class _RegistrosTabState extends State<RegistrosTab> {
 
   void _iniciarSuscripcionesRealtime() {
     final user = _supabase.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      debugPrint("Moobox Error: No hay usuario autenticado para registros");
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    debugPrint("Moobox Sync: Iniciando streams para usuario ${user.id}");
 
     _subPedidos = _supabase
         .from('pedidos')
         .stream(primaryKey: ['id_pedido'])
         .eq('id_usuario', user.id)
         .listen((data) {
+          debugPrint("Moobox Sync: Recibidos ${data.length} pedidos");
           if (mounted) {
             setState(() {
               _pedidos = data.map((e) => {...e, 'tipo_registro': 'pedido'}).toList();
               _isLoading = false;
             });
           }
+        }, onError: (error) {
+          debugPrint("Moobox Error Stream Pedidos: $error");
+          if (mounted) setState(() => _isLoading = false);
         });
 
     _subOfertas = _supabase
@@ -49,12 +59,16 @@ class _RegistrosTabState extends State<RegistrosTab> {
         .stream(primaryKey: ['id_oferta'])
         .eq('id_usuario', user.id)
         .listen((data) {
+          debugPrint("Moobox Sync: Recibidas ${data.length} ofertas");
           if (mounted) {
             setState(() {
               _ofertas = data.map((e) => {...e, 'tipo_registro': 'oferta'}).toList();
               _isLoading = false;
             });
           }
+        }, onError: (error) {
+          debugPrint("Moobox Error Stream Ofertas: $error");
+          if (mounted) setState(() => _isLoading = false);
         });
   }
 
