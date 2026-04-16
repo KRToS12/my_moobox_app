@@ -139,21 +139,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 15),
               TextField(
                 controller: _passwordController,
-                obscureText: _obscurePassword,
+                obscureText: _obscurePassword ?? true,
+
                 decoration: InputDecoration(
                   hintText: "Contraseña",
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryBlue, size: 20),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      (_obscurePassword ?? true) ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+
                       color: AppColors.textSecondary.withOpacity(0.5),
                     ),
                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
+
               ),
               const SizedBox(height: 30),
 
-              _isLoading
+              (_isLoading ?? false)
                   ? const CircularProgressIndicator()
                   : SizedBox(
                       width: double.infinity,

@@ -8,10 +8,11 @@ class RegistrosTab extends StatefulWidget {
   const RegistrosTab({super.key});
 
   @override
-  State<RegistrosTab> createState() => _RegistrosTabState();
+  State<RegistrosTab> createState() => RegistrosTabState();
 }
 
-class _RegistrosTabState extends State<RegistrosTab> {
+class RegistrosTabState extends State<RegistrosTab> {
+
   final _supabase = Supabase.instance.client;
   
   List<Map<String, dynamic>> _pedidos = [];
@@ -24,8 +25,32 @@ class _RegistrosTabState extends State<RegistrosTab> {
   @override
   void initState() {
     super.initState();
+    fetchRegistros(); // Carga manual inmediata
     _iniciarSuscripcionesRealtime();
   }
+
+  Future<void> fetchRegistros() async {
+
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final resPedidos = await _supabase.from('pedidos').select().eq('id_usuario', user.id);
+      final resOfertas = await _supabase.from('ofertas_pedido').select().eq('id_usuario', user.id);
+
+      if (mounted) {
+        setState(() {
+          _pedidos = List<Map<String, dynamic>>.from(resPedidos).map((e) => {...e, 'tipo_registro': 'pedido'}).toList();
+          _ofertas = List<Map<String, dynamic>>.from(resOfertas).map((e) => {...e, 'tipo_registro': 'oferta'}).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching manual: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
 
   void _iniciarSuscripcionesRealtime() {
     final user = _supabase.auth.currentUser;
@@ -100,11 +125,14 @@ class _RegistrosTabState extends State<RegistrosTab> {
         : RefreshIndicator(
             color: AppColors.primaryBlue,
             onRefresh: () async {
-              setState(() => _isLoading = true);
+              await fetchRegistros();
+
+              // Reiniciamos las suscripciones por si acaso hubo un error de red
               _subPedidos?.cancel();
               _subOfertas?.cancel();
               _iniciarSuscripcionesRealtime();
             },
+
             child: registros.isEmpty 
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),

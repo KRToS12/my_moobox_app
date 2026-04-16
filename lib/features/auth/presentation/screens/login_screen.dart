@@ -15,6 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+
 
   // 1. FUNCIÓN PARA LOGIN CON GOOGLE
   void _handleGoogleLogin() async {
@@ -78,15 +80,25 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 15),
               TextField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword ?? true,
+
                 decoration: InputDecoration(
                   hintText: "Password",
-                  suffixIcon: Icon(Icons.lock_outline, color: AppColors.textSecondary.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryBlue, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      (_obscurePassword ?? true) ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+
+                      color: AppColors.textSecondary.withOpacity(0.5),
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
                 ),
               ),
+
               const SizedBox(height: 30),
 
-              _isLoading 
+              (_isLoading ?? false) 
                 ? const CircularProgressIndicator()
                 : SizedBox(
                     width: double.infinity,

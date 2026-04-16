@@ -6,13 +6,16 @@ class FastOrderPriceSummary extends StatelessWidget {
   final double distanciaKm;
   final double precioEstimado;
   final double pesoTN;
+  final bool isLoading;
 
   const FastOrderPriceSummary({
     super.key,
     required this.distanciaKm,
     required this.precioEstimado,
     required this.pesoTN,
+    this.isLoading = false,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -35,13 +38,22 @@ class FastOrderPriceSummary extends StatelessWidget {
           const SizedBox(height: 15),
           Row(
             children: [
-              Text(precioEstimado.toStringAsFixed(2), style: GoogleFonts.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
-              const Padding(
-                padding: EdgeInsets.only(left: 8, bottom: 6),
-                child: Text("BOB", style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
-              ),
+              if (isLoading)
+                const SizedBox(
+                  height: 32,
+                  width: 32,
+                  child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primaryBlue),
+                )
+              else ...[
+                Text(precioEstimado.toStringAsFixed(2), style: GoogleFonts.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
+                const Padding(
+                  padding: EdgeInsets.only(left: 8, bottom: 6),
+                  child: Text("BOB", style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),
+                ),
+              ],
             ],
           ),
+
           const Divider(color: Colors.white10, height: 30),
           _priceDetailRow("Combustible Diesel", "Tarifa: 9.8 BOB/L"),
           _priceDetailRow("Mano de Obra", "Ajustada por ${pesoTN.toInt()} TN"),

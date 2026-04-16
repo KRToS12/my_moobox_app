@@ -12,6 +12,8 @@ import 'widgets/fast_order/fast_order_services_card.dart';
 import 'widgets/fast_order/fast_order_comment_field.dart';
 import 'widgets/fast_order/fast_order_price_summary.dart';
 import 'widgets/fast_order/fast_order_confirm_button.dart';
+import '../domain/pricing_engine.dart';
+
 
 class FastOrderScreen extends StatefulWidget {
   // Aseguramos que recibimos los datos del vehículo correctamente
@@ -50,12 +52,23 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   double _distanciaKm = 0.0;
   double _precioEstimado = 0.0;
   bool _isSubmitting = false;
+  bool _isLoadingPrice = false;
+
+  final PricingEngine _pricingEngine = PricingEngine();
+
 
   @override
   void initState() {
     super.initState();
     _pesoTN = (widget.capacidadSugerida ?? 1.0).clamp(1.0, 30.0);
+    _initPricing();
   }
+
+  Future<void> _initPricing() async {
+    await _pricingEngine.fetchConfig();
+    if (mounted) _calcularPrecio();
+  }
+
 
   @override
   void dispose() {
@@ -142,7 +155,9 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
                   distanciaKm: _distanciaKm,
                   precioEstimado: _precioEstimado,
                   pesoTN: _pesoTN,
+                  isLoading: _isLoadingPrice,
                 ),
+
               ],
   
               const SizedBox(height: 50),
@@ -202,7 +217,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
           content: Text("¡Flete publicado con éxito!"), 
           backgroundColor: AppColors.primaryBlue
         ));
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -217,38 +232,68 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   }
 
   void _calcularPrecio() {
-    if (_posOrigen == null || _posDestino == null) return;
-    const Distance distance = Distance();
-    _distanciaKm = distance.as(LengthUnit.Kilometer, _posOrigen!, _posDestino!);
+    if (_posOrigen == null || _posDestino == null || _distanciaKm == 0) return;
 
-    double dieselPrice = 9.8;
-    double eficiencia = _pesoTN <= 5 ? 8.5 : (_pesoTN <= 15 ? 5.5 : 3.5);
-    double costoCombustible = (_distanciaKm / eficiencia) * dieselPrice;
-    double tarifaAyudante = _pesoTN <= 5 ? 50.0 : (_pesoTN <= 15 ? 80.0 : 120.0);
-    double costoAyudantes = _ayudantes * tarifaAyudante;
-    double costoVehiculo = 60.0 + (_pesoTN * 25.0);
-    double costoPisos = (_pisosOrigen + _pisosDestino) * 30.0;
+    final double total = _pricingEngine.calcularCotizacion(
+      distanciaKm: _distanciaKm,
+      volumenTon: _pesoTN,
+      numPisosTotal: _pisosOrigen + _pisosDestino,
+      numEstibadores: _ayudantes,
+    );
 
     setState(() {
-      _precioEstimado = costoCombustible + costoVehiculo + costoAyudantes + costoPisos;
+      _precioEstimado = total;
     });
   }
+
 
   void _abrirMapa(String tipo) async {
     final dynamic result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const MapsShippingScreen()));
     if (result != null && mounted) {
+      LatLng? newPos;
       setState(() {
         if (tipo == "origen") {
           _origen = result['address'];
           _posOrigen = LatLng(result['lat'], result['lng']);
+          newPos = _posOrigen;
         } else {
           _destino = result['address'];
           _posDestino = LatLng(result['lat'], result['lng']);
+          newPos = _posDestino;
         }
-        _calcularPrecio();
       });
+
+      // Si tenemos ambos puntos, calculamos primero una distancia lineal de respaldo
+      if (_posOrigen != null && _posDestino != null) {
+        // Cálculo síncrono de respaldo (distancia lineal)
+        const Distance distanceCalc = Distance();
+        double linearDistance = distanceCalc.as(LengthUnit.Kilometer, _posOrigen!, _posDestino!);
+        
+        setState(() {
+          _distanciaKm = linearDistance;
+          _isLoadingPrice = true;
+        });
+        _calcularPrecio();
+
+        // Luego intentamos refinar con la distancia real de ORS
+        try {
+          final double realDistance = await _pricingEngine.getRouteDistance(_posOrigen!, _posDestino!);
+          if (mounted && realDistance > 0) {
+            setState(() {
+              _distanciaKm = realDistance;
+            });
+            _calcularPrecio();
+          }
+        } catch (e) {
+          debugPrint("Error refinando distancia con ORS: $e");
+        } finally {
+          if (mounted) setState(() => _isLoadingPrice = false);
+        }
+      }
     }
   }
+
+
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(

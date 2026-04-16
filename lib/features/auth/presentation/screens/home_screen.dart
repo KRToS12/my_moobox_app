@@ -22,6 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _fotoUrl;
   final _supabase = Supabase.instance.client;
 
+  // Key para acceder al estado de la pestaña de registros y forzar refrescos
+  final GlobalKey<RegistrosTabState> _registrosKey = GlobalKey<RegistrosTabState>();
+
+
   // --- 1. SUBSCRIPCIÓN ROBUSTA ---
   StreamSubscription? _avatarSubscription;
 
@@ -30,9 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _pages = [
       HomeTab(rol: widget.rol), 
-      const RegistrosTab(),     
+      RegistrosTab(key: _registrosKey),     
       const ChatTab(),           
     ];
+
     _escucharCambiosPerfil(); 
   }
 
@@ -111,7 +116,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          setState(() => _selectedIndex = index);
+          // Si el usuario cambia a la pestaña de REGISTROS (índice 1), forzamos el refresco
+          if (index == 1) {
+            _registrosKey.currentState?.fetchRegistros();
+          }
+        },
+
         selectedItemColor: AppColors.primaryBlue, 
         unselectedItemColor: AppColors.textSecondary.withOpacity(0.5),
         showUnselectedLabels: true,
