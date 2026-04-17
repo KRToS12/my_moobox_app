@@ -6,6 +6,7 @@ class DireccionModel {
   final String ciudad;
   final double latitud;
   final double longitud;
+  final String? idOferta;
   final String? descripcion;
 
   DireccionModel({
@@ -16,6 +17,7 @@ class DireccionModel {
     required this.ciudad,
     required this.latitud,
     required this.longitud,
+    this.idOferta,
     this.descripcion,
   });
 
@@ -27,6 +29,7 @@ class DireccionModel {
     ciudad: json['ciudad'],
     latitud: json['latitud'].toDouble(),
     longitud: json['longitud'].toDouble(),
+    idOferta: json['id_oferta'],
     descripcion: json['descripcion'],
   );
 
@@ -37,6 +40,7 @@ class DireccionModel {
     'ciudad': ciudad,
     'latitud': latitud,
     'longitud': longitud,
+    'id_oferta': idOferta,
     'descripcion': descripcion,
   };
 }

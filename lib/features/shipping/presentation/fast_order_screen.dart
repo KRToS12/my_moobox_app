@@ -51,6 +51,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   // --- 3. VARIABLES DE CÁLCULO Y ESTADO ---
   double _distanciaKm = 0.0;
   double _precioEstimado = 0.0;
+  double? _precioManual;
   bool _isSubmitting = false;
   bool _isLoadingPrice = false;
 
@@ -79,9 +80,7 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(context),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -89,84 +88,106 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
             end: Alignment.bottomCenter,
             colors: [
               AppColors.primaryBlue.withOpacity(0.05),
-              AppColors.background,
+              Theme.of(context).scaffoldBackgroundColor,
             ],
           ),
         ),
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.only(
-            left: 25, 
-            right: 25, 
-            top: MediaQuery.of(context).padding.top + 70, 
-            bottom: 40
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionHeader("1", "DEFINIR RUTA ENVÍO"),
-              FastOrderRouteCard(
-                origen: _origen,
-                destino: _destino,
-                onTapOrigen: () => _abrirMapa("origen"),
-                onTapDestino: () => _abrirMapa("destino"),
+          slivers: [
+            SliverAppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              floating: true,
+              pinned: false,
+              centerTitle: true,
+              automaticallyImplyLeading: false, // Quita la flecha
+              title: Text(
+                "PREPARAR ENVÍO", 
+                style: GoogleFonts.inter(
+                  fontSize: 14, 
+                  fontWeight: FontWeight.w900, 
+                  letterSpacing: 2.0,
+                  color: AppColors.primaryBlue,
+                )
               ),
-              
-              const SizedBox(height: 35),
-              _buildSectionHeader("2", "DETALLES TÉCNICOS DE CARGA"),
-              FastOrderCargoCard(
-                pesoTN: _pesoTN,
-                tipoCarga: _tipoCarga,
-                onPesoChanged: (val) {
-                  setState(() => _pesoTN = val);
-                  _calcularPrecio();
-                },
-              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildSectionHeader("1", "DEFINIR RUTA ENVÍO"),
+                  FastOrderRouteCard(
+                    origen: _origen,
+                    destino: _destino,
+                    onTapOrigen: () => _abrirMapa("origen"),
+                    onTapDestino: () => _abrirMapa("destino"),
+                  ),
+                  
+                  const SizedBox(height: 35),
+                  _buildSectionHeader("2", "DETALLES TÉCNICOS DE CARGA"),
+                  FastOrderCargoCard(
+                    pesoTN: _pesoTN,
+                    tipoCarga: _tipoCarga,
+                    isLocked: widget.idVehiculoPreseleccionado != null,
+                    onPesoChanged: (val) {
+                      setState(() => _pesoTN = val);
+                      _precioManual = null; // Reset manual price if tonnage changes
+                      _calcularPrecio();
+                    },
+                  ),
   
-              const SizedBox(height: 35),
-              _buildSectionHeader("3", "LOGÍSTICA Y SERVICIOS"),
-              FastOrderServicesCard(
-                ayudantes: _ayudantes,
-                pisosOrigen: _pisosOrigen,
-                pisosDestino: _pisosDestino,
-                pesoTN: _pesoTN,
-                onAyudantesChanged: (val) {
-                  setState(() => _ayudantes = val < 0 ? 0 : val);
-                  _calcularPrecio();
-                },
-                onPisosOrigenChanged: (val) {
-                  setState(() => _pisosOrigen = val < 0 ? 0 : val);
-                  _calcularPrecio();
-                },
-                onPisosDestinoChanged: (val) {
-                  setState(() => _pisosDestino = val < 0 ? 0 : val);
-                  _calcularPrecio();
-                },
-              ),
+                  const SizedBox(height: 35),
+                  _buildSectionHeader("3", "LOGÍSTICA Y SERVICIOS"),
+                  FastOrderServicesCard(
+                    ayudantes: _ayudantes,
+                    pisosOrigen: _pisosOrigen,
+                    pisosDestino: _pisosDestino,
+                    pesoTN: _pesoTN,
+                    onAyudantesChanged: (val) {
+                      setState(() => _ayudantes = val < 0 ? 0 : val);
+                      _precioManual = null;
+                      _calcularPrecio();
+                    },
+                    onPisosOrigenChanged: (val) {
+                      setState(() => _pisosOrigen = val < 0 ? 0 : val);
+                      _precioManual = null;
+                      _calcularPrecio();
+                    },
+                    onPisosDestinoChanged: (val) {
+                      setState(() => _pisosDestino = val < 0 ? 0 : val);
+                      _precioManual = null;
+                      _calcularPrecio();
+                    },
+                  ),
   
-              const SizedBox(height: 35),
-              _buildSectionHeader("4", "REQUERIMIENTOS ESPECIALES"),
-              FastOrderCommentField(commentController: _commentController),
+                  const SizedBox(height: 35),
+                  _buildSectionHeader("4", "REQUERIMIENTOS ESPECIALES"),
+                  FastOrderCommentField(commentController: _commentController),
   
-              if (_distanciaKm > 0) ...[
-                const SizedBox(height: 40),
-                _buildSectionHeader("5", "ANÁLISIS DE COSTOS MOOBOX"),
-                FastOrderPriceSummary(
-                  distanciaKm: _distanciaKm,
-                  precioEstimado: _precioEstimado,
-                  pesoTN: _pesoTN,
-                  isLoading: _isLoadingPrice,
-                ),
+                  if (_distanciaKm > 0) ...[
+                    const SizedBox(height: 40),
+                    _buildSectionHeader("5", "ANÁLISIS DE COSTOS MOOBOX"),
+                    FastOrderPriceSummary(
+                      distanciaKm: _distanciaKm,
+                      precioEstimado: _precioManual ?? _precioEstimado,
+                      pesoTN: _pesoTN,
+                      isLoading: _isLoadingPrice,
+                      onPriceChanged: _showPriceInputDialog,
+                    ),
 
-              ],
+                  ],
   
-              const SizedBox(height: 50),
-              FastOrderConfirmButton(
-                isSubmitting: _isSubmitting,
-                onPressed: _crearPedidoFast,
+                  const SizedBox(height: 50),
+                  FastOrderConfirmButton(
+                    isSubmitting: _isSubmitting,
+                    onPressed: _crearPedidoFast,
+                  ),
+                  const SizedBox(height: 40),
+                ]),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -192,25 +213,42 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception("Sesión no válida.");
 
-      await Supabase.instance.client.from('ofertas_pedido').insert({
+      // 1. CREAR LA OFERTA Y OBTENER SU ID
+      final Map<String, dynamic> offerResponse = await Supabase.instance.client.from('ofertas_pedido').insert({
         'id_usuario': user.id,
-        'monto_ofertado': _precioEstimado,
+        'monto_ofertado': _precioManual ?? _precioEstimado,
         'comentario_oferta': _commentController.text,
         'estado_oferta': 'abierta',
         'id_vehiculo': widget.idVehiculoPreseleccionado,
         'estibadores': _ayudantes,
         'piso_origen': _pisosOrigen,
         'piso_destino': _pisosDestino,
-        'lat_origen': _posOrigen!.latitude,
-        'lng_origen': _posOrigen!.longitude,
-        'lat_destino': _posDestino!.latitude,
-        'lng_destino': _posDestino!.longitude,
-        'direccion_origen': _origen,
-        'direccion_destino': _destino,
         'peso_carga': _pesoTN,
         'tipo_carga': _tipoCarga,
-        'precio': _precioEstimado, 
-      });
+        'precio': _precioManual ?? _precioEstimado, 
+      }).select('id_oferta').single();
+
+      final String idOferta = offerResponse['id_oferta'];
+
+      // 2. CREAR LAS DIRECCIONES RELACIONADAS
+      await Supabase.instance.client.from('direcciones').insert([
+        {
+          'id_oferta': idOferta,
+          'tipo_direccion': 'origen',
+          'calle': _origen,
+          'ciudad': 'Cochabamba',
+          'latitud': _posOrigen!.latitude,
+          'longitud': _posOrigen!.longitude,
+        },
+        {
+          'id_oferta': idOferta,
+          'tipo_direccion': 'destino',
+          'calle': _destino,
+          'ciudad': 'Cochabamba',
+          'latitud': _posDestino!.latitude,
+          'longitud': _posDestino!.longitude,
+        }
+      ]);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -244,6 +282,70 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
     setState(() {
       _precioEstimado = total;
     });
+  }
+
+  void _showPriceInputDialog() {
+    final controller = TextEditingController(text: (_precioManual ?? _precioEstimado).toStringAsFixed(2));
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.textBlack,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          "OFERTAR PRECIO", 
+          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Ingresa el monto que deseas ofertar por este servicio.",
+              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                suffixText: "BOB",
+                suffixStyle: const TextStyle(color: AppColors.primaryBlue),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.white24),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: AppColors.primaryBlue),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("CANCELAR", style: GoogleFonts.inter(color: Colors.white54, fontWeight: FontWeight.w800)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final newPrice = double.tryParse(controller.text);
+              if (newPrice != null) {
+                setState(() => _precioManual = newPrice);
+                Navigator.pop(context);
+              }
+            },
+            child: Text("CONFIRMAR", style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
   }
 
 
@@ -292,33 +394,5 @@ class _FastOrderScreenState extends State<FastOrderScreen> {
       }
     }
   }
-
-
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent, 
-      elevation: 0, 
-      centerTitle: true,
-      leading: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: CircleAvatar(
-          backgroundColor: Colors.white.withOpacity(0.8),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, size: 16, color: AppColors.textBlack), 
-            onPressed: () => Navigator.pop(context)
-          ),
-        ),
-      ), 
-      title: Text(
-        "PREPARAR ENVÍO", 
-        style: GoogleFonts.inter(
-          fontSize: 14, 
-          fontWeight: FontWeight.w900, 
-          letterSpacing: 2.0,
-          color: AppColors.primaryBlue,
-        )
-      )
-    );
-  }
 }
+  

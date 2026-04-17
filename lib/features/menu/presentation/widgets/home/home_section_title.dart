@@ -10,7 +10,7 @@ class HomeSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textMain, letterSpacing: 1.5),
+      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6), letterSpacing: 1.5),
     );
   }
 }

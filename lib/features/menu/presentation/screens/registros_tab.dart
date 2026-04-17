@@ -36,7 +36,11 @@ class RegistrosTabState extends State<RegistrosTab> {
 
     try {
       final resPedidos = await _supabase.from('pedidos').select().eq('id_usuario', user.id);
-      final resOfertas = await _supabase.from('ofertas_pedido').select().eq('id_usuario', user.id);
+      
+      // JOIN query to get directions along with the offer
+      final resOfertas = await _supabase.from('ofertas_pedido')
+          .select('*, direcciones(*)')
+          .eq('id_usuario', user.id);
 
       if (mounted) {
         setState(() {
@@ -84,13 +88,9 @@ class RegistrosTabState extends State<RegistrosTab> {
         .stream(primaryKey: ['id_oferta'])
         .eq('id_usuario', user.id)
         .listen((data) {
-          debugPrint("Moobox Sync: Recibidas ${data.length} ofertas");
-          if (mounted) {
-            setState(() {
-              _ofertas = data.map((e) => {...e, 'tipo_registro': 'oferta'}).toList();
-              _isLoading = false;
-            });
-          }
+          debugPrint("Moobox Sync: Recibidas ${data.length} ofertas - Re-sincronizando direcciones...");
+          // Since stream doesn't support joins, we trigger a manual fetch to get the addresses
+          fetchRegistros();
         }, onError: (error) {
           debugPrint("Moobox Error Stream Ofertas: $error");
           if (mounted) setState(() => _isLoading = false);
@@ -119,7 +119,7 @@ class RegistrosTabState extends State<RegistrosTab> {
     final registros = _listaCombinada;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue))
         : RefreshIndicator(
@@ -146,14 +146,14 @@ class RegistrosTabState extends State<RegistrosTab> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                   itemCount: registros.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12), 
-                  itemBuilder: (context, i) => _buildStealthCard(registros[i]),
+                  itemBuilder: (context, i) => _buildStealthCard(context, registros[i]),
                 ),
           ),
     );
   }
 
   // --- UI: TARJETA PRINCIPAL (SLIM DESIGN) ---
-  Widget _buildStealthCard(Map<String, dynamic> item) {
+  Widget _buildStealthCard(BuildContext context, Map<String, dynamic> item) {
     final bool esPedido = item['tipo_registro'] == 'pedido';
     
     // Mapeo dinámico
@@ -171,9 +171,9 @@ class RegistrosTabState extends State<RegistrosTab> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
         decoration: BoxDecoration(
-          color: const Color(0xFFEBEBEB), 
+          color: Theme.of(context).colorScheme.surface, 
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.dividerGray.withOpacity(0.3)),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
           children: [
@@ -195,7 +195,7 @@ class RegistrosTabState extends State<RegistrosTab> {
                           fontSize: 9, 
                           fontWeight: FontWeight.w900, 
                           letterSpacing: 1.2,
-                          color: AppColors.textBlack.withOpacity(0.7)
+                          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)
                         ),
                       ),
                     ],
@@ -214,7 +214,7 @@ class RegistrosTabState extends State<RegistrosTab> {
                   children: [
                     Text(
                       monto,
-                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textBlack),
+                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyLarge?.color),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -226,7 +226,7 @@ class RegistrosTabState extends State<RegistrosTab> {
               ],
             ),
             const SizedBox(width: 10),
-            Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textBlack.withOpacity(0.2)),
+            Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Theme.of(context).dividerColor),
           ],
         ),
       ),
@@ -243,9 +243,9 @@ class RegistrosTabState extends State<RegistrosTab> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 30),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -260,8 +260,8 @@ class RegistrosTabState extends State<RegistrosTab> {
               
               _infoDetailRow("TIPO DE CARGA", item['tipo_carga'] ?? "Carga General"),
               if (!esPedido) ...[
-                _infoDetailRow("ORIGEN", item['direccion_origen'] ?? "Punto de carga detectado"),
-                _infoDetailRow("DESTINO", item['direccion_destino'] ?? "Punto de entrega detectado"),
+                _buildRelationalAddressRow("ORIGEN", item['direcciones'], "origen"),
+                _buildRelationalAddressRow("DESTINO", item['direcciones'], "destino"),
               ],
               
               const SizedBox(height: 10),
@@ -282,7 +282,7 @@ class RegistrosTabState extends State<RegistrosTab> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(10)),
                   child: Text(item['comentario_oferta'], style: GoogleFonts.inter(fontSize: 13, height: 1.4)),
                 ),
               ],
@@ -314,10 +314,10 @@ class RegistrosTabState extends State<RegistrosTab> {
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: AppColors.textBlack, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest ?? Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(8)),
           child: Text(
             "${esPedido ? item['costo_cotizado'] : item['monto_ofertado']} BOB",
-            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+            style: GoogleFonts.inter(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.w900, fontSize: 13),
           ),
         )
       ],
@@ -342,12 +342,28 @@ class RegistrosTabState extends State<RegistrosTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
+          Text(label, style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6))),
           const SizedBox(height: 4),
-          Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textBlack)),
+          Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color)),
         ],
       ),
     );
+  }
+
+  Widget _buildRelationalAddressRow(String label, dynamic direcciones, String tipo) {
+    String addressValue = tipo == "origen" ? "Punto de carga detectado" : "Punto de entrega detectado";
+    
+    if (direcciones != null && direcciones is List) {
+      final dir = direcciones.firstWhere(
+        (d) => d['tipo_direccion'] == tipo,
+        orElse: () => null
+      );
+      if (dir != null && dir['calle'] != null) {
+        addressValue = dir['calle'];
+      }
+    }
+
+    return _infoDetailRow(label, addressValue);
   }
 
   Widget _miniDetailCard(IconData icon, String label, String value) {
@@ -359,8 +375,8 @@ class RegistrosTabState extends State<RegistrosTab> {
         children: [
           Icon(icon, size: 14, color: AppColors.primaryBlue),
           const SizedBox(height: 6),
-          Text(label, style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
-          Text(value, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.textBlack)),
+          Text(label, style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6))),
+          Text(value, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyLarge?.color)),
         ],
       ),
     );
@@ -370,9 +386,9 @@ class RegistrosTabState extends State<RegistrosTab> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.textBlack, padding: const EdgeInsets.all(18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, padding: const EdgeInsets.all(18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
         onPressed: () => Navigator.pop(context),
-        child: Text("CERRAR DETALLES", style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+        child: Text("CERRAR DETALLES", style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onPrimary, fontWeight: FontWeight.w900, fontSize: 12)),
       ),
     );
   }

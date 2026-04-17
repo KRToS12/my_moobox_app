@@ -7,6 +7,7 @@ class FastOrderPriceSummary extends StatelessWidget {
   final double precioEstimado;
   final double pesoTN;
   final bool isLoading;
+  final VoidCallback? onPriceChanged;
 
   const FastOrderPriceSummary({
     super.key,
@@ -14,6 +15,7 @@ class FastOrderPriceSummary extends StatelessWidget {
     required this.precioEstimado,
     required this.pesoTN,
     this.isLoading = false,
+    this.onPriceChanged,
   });
 
 
@@ -45,7 +47,20 @@ class FastOrderPriceSummary extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primaryBlue),
                 )
               else ...[
-                Text(precioEstimado.toStringAsFixed(2), style: GoogleFonts.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
+                InkWell(
+                  onTap: onPriceChanged,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      Text(precioEstimado.toStringAsFixed(2), style: GoogleFonts.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
+                      if (onPriceChanged != null)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: Icon(Icons.edit_outlined, color: AppColors.warningYellow, size: 16),
+                        ),
+                    ],
+                  ),
+                ),
                 const Padding(
                   padding: EdgeInsets.only(left: 8, bottom: 6),
                   child: Text("BOB", style: TextStyle(color: AppColors.primaryBlue, fontWeight: FontWeight.bold)),

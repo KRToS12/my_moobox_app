@@ -73,11 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background, 
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, 
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            backgroundColor: AppColors.background,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             elevation: 0,
             floating: true, 
             snap: true,    
@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: GoogleFonts.inter(
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textBlack,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
                 letterSpacing: 1.5,
               ),
             ),
@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       MaterialPageRoute(builder: (context) => PerfilScreen(rol: widget.rol)),
                     );
                   },
-                  child: _buildDynamicAvatar(),
+                  child: _buildDynamicAvatar(context),
                 ),
               ),
             ],
@@ -124,10 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
 
-        selectedItemColor: AppColors.primaryBlue, 
-        unselectedItemColor: AppColors.textSecondary.withOpacity(0.5),
+        selectedItemColor: Theme.of(context).colorScheme.primary, 
+        unselectedItemColor: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
         showUnselectedLabels: true,
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 10,
         type: BottomNavigationBarType.fixed,
         items: const [
@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDynamicAvatar() {
+  Widget _buildDynamicAvatar(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -147,14 +147,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: CircleAvatar(
         radius: 20,
-        backgroundColor: AppColors.dividerGray.withOpacity(0.3),
+        backgroundColor: Theme.of(context).dividerColor.withOpacity(0.3),
         // Agregamos una Key única para forzar el refresco de la imagen si la URL cambia
         key: ValueKey(_fotoUrl), 
         backgroundImage: (_fotoUrl != null && _fotoUrl!.isNotEmpty) 
             ? NetworkImage(_fotoUrl!) 
             : null,
         child: (_fotoUrl == null || _fotoUrl!.isEmpty)
-            ? const Icon(Icons.person_rounded, size: 24, color: AppColors.textBlack)
+            ? Icon(Icons.person_rounded, size: 24, color: Theme.of(context).textTheme.bodyLarge?.color)
             : null,
       ),
     );

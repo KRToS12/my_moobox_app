@@ -43,7 +43,7 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.only(left: 25, top: 15), 
-                  child: Text("No hay unidades operativas disponibles.", style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600))
+                  child: Text("No hay unidades operativas disponibles.", style: GoogleFonts.inter(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6), fontWeight: FontWeight.w600))
                 );
               }
 
@@ -71,11 +71,11 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.dividerGray.withOpacity(0.6)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.6)),
         boxShadow: [
-          BoxShadow(color: AppColors.textBlack.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))
+          BoxShadow(color: Theme.of(context).shadowColor.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))
         ],
       ),
       child: Row(
@@ -98,15 +98,15 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text("CAPACIDAD", style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+                Text("CAPACIDAD", style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w800, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6))),
                 Text("${toneladas.toStringAsFixed(1)} TN", 
-                    style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w900, color: AppColors.textBlack, height: 1.1)),
+                    style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyLarge?.color, height: 1.1)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.badge_outlined, size: 10, color: AppColors.textSecondary),
+                    Icon(Icons.badge_outlined, size: 10, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)),
                     const SizedBox(width: 4),
-                    Text("PLACA: $matricula", style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    Text("PLACA: $matricula", style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6))),
                   ],
                 ),
                 const Spacer(),
@@ -187,9 +187,9 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(30),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -220,7 +220,7 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
                   flex: 2,
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text("CANCELAR", style: GoogleFonts.inter(color: AppColors.textSecondary, fontWeight: FontWeight.w800, fontSize: 12)),
+                    child: Text("CANCELAR", style: GoogleFonts.inter(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6), fontWeight: FontWeight.w800, fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 15),
@@ -264,9 +264,9 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+          Text(label, style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6))),
           const SizedBox(height: 6),
-          Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textBlack)),
+          Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color)),
         ],
       ),
     );
@@ -291,8 +291,8 @@ class _AvailableFleetCarouselState extends State<AvailableFleetCarousel> {
     if (url == null || url.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.background),
-        child: const Icon(Icons.local_shipping_outlined, size: 40, color: AppColors.dividerGray)
+        decoration: BoxDecoration(shape: BoxShape.circle, color: Theme.of(context).scaffoldBackgroundColor),
+        child: Icon(Icons.local_shipping_outlined, size: 40, color: Theme.of(context).dividerColor)
       );
     }
     return Image.network(url, fit: BoxFit.contain);

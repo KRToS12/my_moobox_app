@@ -55,63 +55,7 @@ class _OperatorHomeScreenState extends State<OperatorHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            backgroundColor: AppColors.background,
-            elevation: 0,
-            floating: true,
-            snap: true,
-            centerTitle: false,
-            title: Text(
-              "MOOBOX OP",
-              style: GoogleFonts.inter(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: AppColors.primaryBlue,
-                letterSpacing: 1.5,
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 15),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(29),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => PerfilScreen(rol: widget.rol)),
-                    );
-                  },
-                  child: _buildDynamicAvatar(),
-                ),
-              ),
-            ],
-          ),
-        ],
-        body: OperatorHomeTab(rol: widget.rol),
-      ),
-    );
-  }
-
-  Widget _buildDynamicAvatar() {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primaryBlue.withOpacity(0.2), width: 1),
-      ),
-      child: CircleAvatar(
-        radius: 20,
-        backgroundColor: AppColors.dividerGray.withOpacity(0.3),
-        key: ValueKey(_fotoUrl),
-        backgroundImage: (_fotoUrl != null && _fotoUrl!.isNotEmpty)
-            ? NetworkImage(_fotoUrl!)
-            : null,
-        child: (_fotoUrl == null || _fotoUrl!.isEmpty)
-            ? const Icon(Icons.person_rounded, size: 24, color: AppColors.textBlack)
-            : null,
-      ),
+      body: OperatorHomeTab(rol: widget.rol),
     );
   }
 }

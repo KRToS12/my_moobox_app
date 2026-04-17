@@ -27,11 +27,11 @@ class FastOrderServicesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textBlack.withOpacity(0.04),
+            color: Theme.of(context).shadowColor.withOpacity(0.04),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -43,21 +43,22 @@ class FastOrderServicesCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _counterRow(
+              context: context,
               label: "ESTIBADORES / AYUDANTES", 
               icon: Icons.groups_rounded, 
               value: ayudantes, 
               onChanged: onAyudantesChanged
             ),
             _buildSmartRecommendation(),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20), 
-              child: Divider(color: AppColors.dividerGray, thickness: 0.5)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20), 
+              child: Divider(color: Theme.of(context).dividerColor, thickness: 0.5)
             ),
             Row(
               children: [
-                Expanded(child: _miniCounter("PISO ORIGEN", pisosOrigen, onPisosOrigenChanged)),
+                Expanded(child: _miniCounter(context, "PISO ORIGEN", pisosOrigen, onPisosOrigenChanged)),
                 const SizedBox(width: 20),
-                Expanded(child: _miniCounter("PISO DESTINO", pisosDestino, onPisosDestinoChanged)),
+                Expanded(child: _miniCounter(context, "PISO DESTINO", pisosDestino, onPisosDestinoChanged)),
               ],
             ),
           ],
@@ -100,7 +101,7 @@ class FastOrderServicesCard extends StatelessWidget {
     );
   }
 
-  Widget _counterRow({required String label, required IconData icon, required int value, required Function(int) onChanged}) {
+  Widget _counterRow({required BuildContext context, required String label, required IconData icon, required int value, required Function(int) onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -113,7 +114,7 @@ class FastOrderServicesCard extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 10, 
                 fontWeight: FontWeight.w900, 
-                color: AppColors.textSecondary,
+                color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6),
                 letterSpacing: 0.5,
               )
             ),
@@ -128,17 +129,17 @@ class FastOrderServicesCard extends StatelessWidget {
               style: GoogleFonts.inter(
                 fontSize: 13, 
                 fontWeight: FontWeight.w700, 
-                color: AppColors.textBlack
+                color: Theme.of(context).textTheme.bodyLarge?.color
               )
             ),
-            _buildControl(value, onChanged),
+            _buildControl(context, value, onChanged),
           ],
         ),
       ],
     );
   }
 
-  Widget _miniCounter(String label, int value, Function(int) onChanged) {
+  Widget _miniCounter(BuildContext context, String label, int value, Function(int) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -147,26 +148,26 @@ class FastOrderServicesCard extends StatelessWidget {
           style: GoogleFonts.inter(
             fontSize: 9, 
             fontWeight: FontWeight.w900, 
-            color: AppColors.textSecondary,
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6),
             letterSpacing: 0.5,
           )
         ),
         const SizedBox(height: 10),
-        _buildControl(value, onChanged, isSmall: true),
+        _buildControl(context, value, onChanged, isSmall: true),
       ],
     );
   }
 
-  Widget _buildControl(int value, Function(int) onChanged, {bool isSmall = false}) {
+  Widget _buildControl(BuildContext context, int value, Function(int) onChanged, {bool isSmall = false}) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _circleButton(Icons.remove, () => value > 0 ? {HapticFeedback.lightImpact(), onChanged(value - 1)} : null),
+          _circleButton(context, Icons.remove, () => value > 0 ? {HapticFeedback.lightImpact(), onChanged(value - 1)} : null),
           Container(
             constraints: BoxConstraints(minWidth: isSmall ? 30 : 45),
             child: Center(
@@ -175,18 +176,18 @@ class FastOrderServicesCard extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: isSmall ? 14 : 16, 
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textBlack,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                 )
               )
             ),
           ),
-          _circleButton(Icons.add, () => {HapticFeedback.lightImpact(), onChanged(value + 1)}),
+          _circleButton(context, Icons.add, () => {HapticFeedback.lightImpact(), onChanged(value + 1)}),
         ],
       ),
     );
   }
 
-  Widget _circleButton(IconData icon, VoidCallback? onTap) {
+  Widget _circleButton(BuildContext context, IconData icon, VoidCallback? onTap) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -194,7 +195,7 @@ class FastOrderServicesCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 16, color: onTap == null ? AppColors.dividerGray : AppColors.primaryBlue),
+          child: Icon(icon, size: 16, color: onTap == null ? Theme.of(context).dividerColor : AppColors.primaryBlue),
         ),
       ),
     );

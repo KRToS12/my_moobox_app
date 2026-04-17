@@ -121,12 +121,11 @@ class _MapsShippingScreenState extends State<MapsShippingScreen> {
   String _limpiarDireccion(String addr) {
     if (addr == "Calle detectada" || addr == "Ubicación detectada") return addr;
     
-    // Eliminamos redundancias comunes
+    // Solo eliminamos el país para mantener el nombre de la calle y ciudad si es necesario, 
+    // pero priorizamos que la calle se vea limpia.
     return addr
       .replaceAll(", Bolivia", "")
-      .replaceAll(", Cochabamba", "")
-      .replaceAll("Cochabamba, ", "")
-      .split(", Argentina")[0] // Fallback por si acaso
+      .replaceAll(", BO", "")
       .trim();
   }
 
@@ -142,10 +141,12 @@ class _MapsShippingScreenState extends State<MapsShippingScreen> {
         final data = json.decode(resPhoton.body);
         if (data['features'] != null && data['features'].isNotEmpty) {
           final props = data['features'][0]['properties'];
-          final String nombre = props['name'] ?? props['street'] ?? "Ubicación detectada";
+          
+          // Prioridad: Calle > Nombre > Ciudad
+          final String nombre = props['street'] ?? props['name'] ?? props['city'] ?? "Ubicación detectada";
           
           setState(() {
-            _puntoActual = punto; // Mantenemos el punto original de centro si OSRM falló
+            _puntoActual = punto; 
             _direccionDetectada = _limpiarDireccion(nombre);
           });
         }

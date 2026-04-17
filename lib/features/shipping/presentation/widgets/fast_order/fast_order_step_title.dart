@@ -14,11 +14,11 @@ class FastOrderStepTitle extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 12,
-          backgroundColor: AppColors.textBlack,
-          child: Text(step, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          backgroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+          child: Text(step, style: TextStyle(color: Theme.of(context).scaffoldBackgroundColor, fontSize: 10, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(width: 10),
-        Text(title, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textBlack, letterSpacing: 1.2)),
+        Text(title, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: Theme.of(context).textTheme.bodyLarge?.color, letterSpacing: 1.2)),
       ],
     );
   }

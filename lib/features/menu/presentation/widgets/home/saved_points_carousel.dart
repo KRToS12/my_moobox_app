@@ -24,7 +24,7 @@ class SavedPointsCarousel extends StatelessWidget {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Padding(
               padding: const EdgeInsets.only(left: 25, top: 15),
-              child: Text("No hay puntos guardados.", style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              child: Text("No hay puntos guardados.", style: GoogleFonts.inter(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6), fontWeight: FontWeight.w600)),
             );
           }
 
@@ -32,21 +32,21 @@ class SavedPointsCarousel extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             itemCount: snapshot.data!.length,
-            itemBuilder: (context, i) => _buildPointChip(snapshot.data![i]),
+            itemBuilder: (context, i) => _buildPointChip(context, snapshot.data![i]),
           );
         },
       ),
     );
   }
 
-  Widget _buildPointChip(Map<String, dynamic> point) {
+  Widget _buildPointChip(BuildContext context, Map<String, dynamic> point) {
     return Container(
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.dividerGray),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Center(
         child: Row(
@@ -55,7 +55,7 @@ class SavedPointsCarousel extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               point['nombre_lugar'].toString().toUpperCase(),
-              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textBlack),
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: Theme.of(context).textTheme.bodyLarge?.color),
             ),
           ],
         ),

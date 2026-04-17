@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_colors.dart';
 class FastOrderCargoCard extends StatelessWidget {
   final double pesoTN;
   final String tipoCarga;
+  final bool isLocked;
   final ValueChanged<double> onPesoChanged;
 
   const FastOrderCargoCard({
@@ -13,6 +14,7 @@ class FastOrderCargoCard extends StatelessWidget {
     required this.pesoTN,
     required this.tipoCarga,
     required this.onPesoChanged,
+    this.isLocked = false,
   });
 
   @override
@@ -36,6 +38,25 @@ class FastOrderCargoCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _cargoInfoItem("PESO DE CARGA", "${pesoTN.toStringAsFixed(1)} TN"),
+              if (isLocked)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primaryBlue.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock_rounded, size: 10, color: AppColors.primaryBlue),
+                      const SizedBox(width: 4),
+                      Text(
+                        "FIJO POR VEHÍCULO",
+                        style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.primaryBlue),
+                      ),
+                    ],
+                  ),
+                ),
               // --- ICONO DINÁMICO ---
               AnimatedScale(
                 scale: 1.0 + (pesoTN / 30 * 0.5),
@@ -71,7 +92,7 @@ class FastOrderCargoCard extends StatelessWidget {
               value: pesoTN,
               min: 1.0,
               max: 30.0,
-              onChanged: (val) {
+              onChanged: isLocked ? null : (val) {
                 HapticFeedback.selectionClick();
                 onPesoChanged(val);
               },
